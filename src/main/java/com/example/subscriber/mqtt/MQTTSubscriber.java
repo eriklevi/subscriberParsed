@@ -149,7 +149,7 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
                 int sequenceNumber = Integer.parseInt(payload.substring(26, 28)+payload.charAt(24),16);
                 p = new LocalPacket(Instant.now().toEpochMilli(), snifferMac, deviceMac, false, sequenceNumber, ssid, ssid_len, payload.substring(30+ssid_len*2));
             }
-            LocalDateTime t = Instant.ofEpochMilli(p.getTimestamp()).atZone(ZoneId.systemDefault()).toLocalDateTime();
+            LocalDateTime t = Instant.ofEpochMilli(p.getTimestamp()).atZone(ZoneId.of("CET")).toLocalDateTime();
             p.setYear(t.getYear());
             p.setMonth(t.getMonthValue());
             p.setWeekOfYear(t.get(WeekFields.ISO.weekOfYear()));
