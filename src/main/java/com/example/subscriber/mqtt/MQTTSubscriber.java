@@ -3,6 +3,7 @@ package com.example.subscriber.mqtt;
 import com.example.subscriber.HelperMethods;
 import com.example.subscriber.entities.LocalPacket;
 import com.example.subscriber.entities.Packet;
+import com.example.subscriber.entities.SnifferLocation;
 import com.example.subscriber.repositories.PacketsRepository;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
@@ -14,7 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -22,6 +27,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.WeekFields;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 public class MQTTSubscriber implements MqttCallback, DisposableBean, InitializingBean {
@@ -30,6 +38,7 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
     @Autowired
     private DiscoveryClient discoveryClient;
     private MqttClient mqttClient;
+    private Map<String, SnifferLocation> snifferLocationMap;
 
     private static final Logger logger = LoggerFactory.getLogger(MQTTSubscriber.class);
 
@@ -89,7 +98,7 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
                     Thread.sleep(2500);
                 }
                 catch(Exception e){
-                    logger.error("Eccezzione nella thread sleep");
+                    logger.error("Exception in thread sleep");
                 }
                 logger.info("Impossible to get moquette instance....trying...");
             } else{
@@ -97,6 +106,35 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
             }
         }
         this.broker = instances.get(0).getHost();
+        success = false;
+        while(!success){
+            instances = this.discoveryClient.getInstances("snifferservice");
+            if(instances.size() == 0){
+                try{
+                    Thread.sleep(2500);
+                }
+                catch(Exception e){
+                    logger.error("Exception in thread sleep");
+                }
+                logger.info("Impossible to get snifferservice instance....trying...");
+            } else{
+                success = true;
+            }
+        }
+        String snifferServiceUri = String.format("%s/sniffers/locations", instances.get(0).getUri().toString());
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<List<SnifferLocation>> restExchange = restTemplate.exchange(
+                snifferServiceUri,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<List<SnifferLocation>>(){}
+        );
+        snifferLocationMap = restExchange
+                .getBody()
+                .stream()
+                .collect(Collectors.toMap(
+                    SnifferLocation::getMac, Function.identity()
+                ));
     }
 
     @Override
@@ -150,6 +188,10 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
                 p = new LocalPacket(Instant.now().toEpochMilli(), snifferMac, deviceMac, false, sequenceNumber, ssid, ssid_len, payload.substring(30+ssid_len*2));
             }
             LocalDateTime t = Instant.ofEpochMilli(p.getTimestamp()).atZone(ZoneId.of("CET")).toLocalDateTime();
+            SnifferLocation snifferLocation = snifferLocationMap.get(p.getSnifferMac());
+            p.setSnifferName(snifferLocation.getName());
+            p.setSnifferBuilding(snifferLocation.getBuilding());
+            p.setSnifferRoom(snifferLocation.getRoom());
             p.setYear(t.getYear());
             p.setMonth(t.getMonthValue());
             p.setWeekOfYear(t.get(WeekFields.ISO.weekOfYear()));

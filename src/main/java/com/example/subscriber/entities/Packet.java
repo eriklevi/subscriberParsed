@@ -6,6 +6,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Packet {
     private long timestamp;
     private String snifferMac;
+    private String snifferName;
+    private String snifferBuilding;
+    private String snifferRoom;
     private String deviceMac;
     private boolean global;
     private int sequenceNumber;
@@ -166,5 +169,29 @@ public class Packet {
 
     public void setMinute(int minute) {
         this.minute = minute;
+    }
+
+    public String getSnifferName() {
+        return snifferName;
+    }
+
+    public void setSnifferName(String snifferName) {
+        this.snifferName = snifferName;
+    }
+
+    public String getSnifferBuilding() {
+        return snifferBuilding;
+    }
+
+    public void setSnifferBuilding(String snifferBuilding) {
+        this.snifferBuilding = snifferBuilding;
+    }
+
+    public String getSnifferRoom() {
+        return snifferRoom;
+    }
+
+    public void setSnifferRoom(String snifferRoom) {
+        this.snifferRoom = snifferRoom;
     }
 }
