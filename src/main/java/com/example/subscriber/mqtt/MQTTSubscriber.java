@@ -1,6 +1,7 @@
 package com.example.subscriber.mqtt;
 
 import com.example.subscriber.HelperMethods;
+import com.example.subscriber.SnifferLocationService;
 import com.example.subscriber.entities.LocalPacket;
 import com.example.subscriber.entities.Packet;
 import com.example.subscriber.entities.SnifferLocation;
@@ -38,7 +39,8 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
     @Autowired
     private DiscoveryClient discoveryClient;
     private MqttClient mqttClient;
-    private Map<String, SnifferLocation> snifferLocationMap;
+    @Autowired
+    private SnifferLocationService snifferLocationService;
 
     private static final Logger logger = LoggerFactory.getLogger(MQTTSubscriber.class);
 
@@ -106,35 +108,6 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
             }
         }
         this.broker = instances.get(0).getHost();
-        success = false;
-        while(!success){
-            instances = this.discoveryClient.getInstances("snifferservice");
-            if(instances.size() == 0){
-                try{
-                    Thread.sleep(2500);
-                }
-                catch(Exception e){
-                    logger.error("Exception in thread sleep");
-                }
-                logger.info("Impossible to get snifferservice instance....trying...");
-            } else{
-                success = true;
-            }
-        }
-        String snifferServiceUri = String.format("%s/sniffers/locations", instances.get(0).getUri().toString());
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<List<SnifferLocation>> restExchange = restTemplate.exchange(
-                snifferServiceUri,
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<List<SnifferLocation>>(){}
-        );
-        snifferLocationMap = restExchange
-                .getBody()
-                .stream()
-                .collect(Collectors.toMap(
-                    SnifferLocation::getMac, Function.identity()
-                ));
     }
 
     @Override
@@ -162,7 +135,6 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
     public void messageArrived(String s, MqttMessage mqttMessage) throws Exception {
         try {
             String time = new Timestamp(System.currentTimeMillis()).toString();
-            logger.info("Arrivato messaggio su topic " + topic +" timestamp "+time);
             String payload = HelperMethods.bytesToHex(mqttMessage.getPayload());
             //serializziamo i dati come string visto che le analisi fatte sono a livello dei caratteri
             String snifferMac = payload.substring(0, 2)+ ":" + payload.substring(2,4) +":"+payload.substring(4, 6)+ ":"+payload.substring(6, 8)+ ":"+payload.substring(8, 10)+ ":"+payload.substring(10, 12);
@@ -188,7 +160,7 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
                 p = new LocalPacket(Instant.now().toEpochMilli(), snifferMac, deviceMac, false, sequenceNumber, ssid, ssid_len, payload.substring(30+ssid_len*2));
             }
             LocalDateTime t = Instant.ofEpochMilli(p.getTimestamp()).atZone(ZoneId.of("CET")).toLocalDateTime();
-            SnifferLocation snifferLocation = snifferLocationMap.get(p.getSnifferMac());
+            SnifferLocation snifferLocation = this.snifferLocationService.getSnifferLocation(p.getSnifferMac());
             p.setSnifferName(snifferLocation.getName());
             p.setSnifferBuilding(snifferLocation.getBuilding());
             p.setSnifferRoom(snifferLocation.getRoom());
@@ -202,8 +174,12 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
             p.setFiveMinute(t.getMinute()/5+1); //raggruppo per 5 minuti 1-12...0-4 5-9.....
             p.setTenMinute(t.getMinute()/10+1);
             p.setMinute(t.getMinute());
+            p.setSnifferId(snifferLocation.getId());
+            p.setSnifferBuildingId(snifferLocation.getBuildingId());
+            p.setSnifferRoomId(snifferLocation.getRoomId());
             packetsRepository.save(p);
         } catch (Exception e) {
+            logger.error(e.getMessage());
             System.out.println(e.getMessage());
             e.printStackTrace();
         }
@@ -223,6 +199,7 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
     @Override
     public void afterPropertiesSet() throws Exception {
         this.getBrokerInstance(); //uses Discovery client so it must be called after eureka setup
+        this.snifferLocationService.update();
         this.config();
         this.mqttClient.subscribe(topic, this.qos);
     }

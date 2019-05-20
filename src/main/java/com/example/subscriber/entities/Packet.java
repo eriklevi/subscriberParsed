@@ -5,10 +5,13 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document("parsedPackets")
 public class Packet {
     private long timestamp;
+    private String snifferId;
     private String snifferMac;
     private String snifferName;
     private String snifferBuilding;
+    private String snifferBuildingId;
     private String snifferRoom;
+    private String snifferRoomId;
     private String deviceMac;
     private boolean global;
     private int sequenceNumber;
@@ -193,5 +196,29 @@ public class Packet {
 
     public void setSnifferRoom(String snifferRoom) {
         this.snifferRoom = snifferRoom;
+    }
+
+    public String getSnifferId() {
+        return snifferId;
+    }
+
+    public void setSnifferId(String snifferId) {
+        this.snifferId = snifferId;
+    }
+
+    public String getSnifferBuildingId() {
+        return snifferBuildingId;
+    }
+
+    public void setSnifferBuildingId(String snifferBuildingId) {
+        this.snifferBuildingId = snifferBuildingId;
+    }
+
+    public String getSnifferRoomId() {
+        return snifferRoomId;
+    }
+
+    public void setSnifferRoomId(String snifferRoomId) {
+        this.snifferRoomId = snifferRoomId;
     }
 }
