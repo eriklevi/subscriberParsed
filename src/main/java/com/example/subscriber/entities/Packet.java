@@ -1,9 +1,12 @@
 package com.example.subscriber.entities;
 
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("parsedPackets")
 public class Packet {
+    @Id
+    private String id;
     private long timestamp;
     private String snifferId;
     private String snifferMac;
@@ -220,5 +223,13 @@ public class Packet {
 
     public void setSnifferRoomId(String snifferRoomId) {
         this.snifferRoomId = snifferRoomId;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 }
