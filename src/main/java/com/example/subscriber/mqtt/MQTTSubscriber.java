@@ -161,6 +161,10 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
             }
             LocalDateTime t = Instant.ofEpochMilli(p.getTimestamp()).atZone(ZoneId.of("CET")).toLocalDateTime();
             SnifferLocation snifferLocation = this.snifferLocationService.getSnifferLocation(p.getSnifferMac());
+            if(snifferLocation == null){
+                logger.info("snifferLocation is null for mac {}", p.getSnifferMac());
+                return;
+            }
             p.setSnifferName(snifferLocation.getName());
             p.setSnifferBuilding(snifferLocation.getBuilding());
             p.setSnifferRoom(snifferLocation.getRoom());
