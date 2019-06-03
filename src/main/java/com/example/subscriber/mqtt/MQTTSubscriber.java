@@ -140,25 +140,31 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
             String snifferMac = payload.substring(0, 2)+ ":" + payload.substring(2,4) +":"+payload.substring(4, 6)+ ":"+payload.substring(6, 8)+ ":"+payload.substring(8, 10)+ ":"+payload.substring(10, 12);
             String deviceMac = payload.substring(12, 14)+ ":" + payload.substring(14,16) +":"+payload.substring(16, 18)+ ":"+payload.substring(18, 20)+ ":"+payload.substring(20, 22)+ ":"+payload.substring(22, 24);
             char letter = deviceMac.charAt(1);
-            int ssid_len = Integer.parseInt(payload.substring(28, 30), 16);
+            int ssid_len = Integer.parseInt(payload.substring(30, 32), 16);
             String ssid;
             Packet p;
             if(ssid_len != 0){
-                ssid = HelperMethods.hexToAscii(payload.substring(30, 30+ssid_len*2));
+                ssid = HelperMethods.hexToAscii(payload.substring(32, 32+ssid_len*2));
             }
             else{
                 ssid = "";
             }
+            int sequenceNumber = Integer.parseInt(payload.substring(26, 28)+payload.charAt(24),16);
+            /*
+            For those of you who need to convert hexadecimal representation of a signed byte from two-character String into byte (which in Java is always signed), there is an example.
+            Parsing a hexadecimal string never gives negative number, which is faulty, because 0xFF is -1 from some point of view (two's complement coding).
+            The principle is to parse the incoming String as int, which is larger than byte, and then wrap around negative numbers. I'm showing only bytes, so that example is short enough.
+             */
+            int rssi = -256 + Integer.parseInt(payload.substring(28,30), 16);
             //attenzione che il sequence number è formato da 12 bit di sequence number e 4 bit di fragment number, vanno parsati solo i primi 3 caratteri hex
             if(letter == '0' || letter == '1' || letter == '4' || letter == '5' || letter == '8' || letter == '9' || letter == 'c' || letter == 'd'){
                 //global
-                int sequenceNumber = Integer.parseInt(payload.substring(26, 28)+payload.charAt(24),16);
                 p = new Packet(Instant.now().toEpochMilli(), snifferMac, deviceMac, true, sequenceNumber,ssid, ssid_len);
             }
             else{
-                int sequenceNumber = Integer.parseInt(payload.substring(26, 28)+payload.charAt(24),16);
                 p = new LocalPacket(Instant.now().toEpochMilli(), snifferMac, deviceMac, false, sequenceNumber, ssid, ssid_len, payload.substring(30+ssid_len*2));
             }
+            p.setRssi(rssi);
             LocalDateTime t = Instant.ofEpochMilli(p.getTimestamp()).atZone(ZoneId.of("CET")).toLocalDateTime();
             SnifferLocation snifferLocation = this.snifferLocationService.getSnifferLocation(p.getSnifferMac());
             if(snifferLocation == null){

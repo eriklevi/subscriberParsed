@@ -18,6 +18,7 @@ public class Packet {
     private String deviceMac;
     private boolean global;
     private int sequenceNumber;
+    private int rssi;
     private String ssid;
     private int ssidLen;
     private int year;
@@ -231,5 +232,13 @@ public class Packet {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public int getRssi() {
+        return rssi;
+    }
+
+    public void setRssi(int rssi) {
+        this.rssi = rssi;
     }
 }
