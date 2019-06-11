@@ -19,6 +19,7 @@ public class Packet {
     private boolean global;
     private int sequenceNumber;
     private int rssi;
+    private String fcs;
     private String ssid;
     private int ssidLen;
     private int year;
@@ -240,5 +241,13 @@ public class Packet {
 
     public void setRssi(int rssi) {
         this.rssi = rssi;
+    }
+
+    public String getFcs() {
+        return fcs;
+    }
+
+    public void setFcs(String fcs) {
+        this.fcs = fcs;
     }
 }
