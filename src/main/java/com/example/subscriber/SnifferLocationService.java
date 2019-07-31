@@ -22,12 +22,12 @@ import java.util.stream.Collectors;
 public class SnifferLocationService {
 
     private Map<String, SnifferLocation> snifferLocationMap;
-    @Autowired
-    private DiscoveryClient discoveryClient;
+    private final DiscoveryClient discoveryClient;
     private static final Logger logger = LoggerFactory.getLogger(SnifferLocationService.class);
 
-    public SnifferLocationService() {
-        this.snifferLocationMap = new ConcurrentHashMap<String, SnifferLocation>();
+    public SnifferLocationService(DiscoveryClient discoveryClient) {
+        this.snifferLocationMap = new ConcurrentHashMap<>();
+        this.discoveryClient = discoveryClient;
     }
 
     public SnifferLocation getSnifferLocation(String mac){

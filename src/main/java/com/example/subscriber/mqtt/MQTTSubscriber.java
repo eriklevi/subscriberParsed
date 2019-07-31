@@ -72,21 +72,43 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
         MqttConnectOptions connectionOptions = new MqttConnectOptions();
         try {
             this.mqttClient = new MqttClient(brokerUrl, clientId, persistence);
-            connectionOptions.setCleanSession(true);
-            connectionOptions.setAutomaticReconnect(autoReconnect); //try to reconnect to server from 1 second after fail up to 2 minutes delay
-            if(useCredentials){
-                connectionOptions.setUserName(userName);
-                connectionOptions.setPassword(password.toCharArray());
-            }
-            connectionOptions.setKeepAliveInterval(keepAliveInterval);
-            connectionOptions.setConnectionTimeout(0); //wait until connection successful or fail
             this.mqttClient.setCallback(this);
-            this.mqttClient.connect(connectionOptions);
         } catch (MqttException me) {
             logger.error("resason "+ me.getReasonCode());
             logger.error("message "+ me.getMessage());
             logger.error("cause "+ me.getCause());
             me.printStackTrace();
+        }
+    }
+
+    private void connect() {
+        boolean success = false;
+        while(!success) {
+            try {
+                MqttConnectOptions connectionOptions = new MqttConnectOptions();
+                connectionOptions.setCleanSession(true);
+                connectionOptions.setAutomaticReconnect(autoReconnect); //try to reconnect to server from 1 second after fail up to 2 minutes delay
+                if(useCredentials){
+                    connectionOptions.setUserName(userName);
+                    connectionOptions.setPassword(password.toCharArray());
+                }
+                connectionOptions.setKeepAliveInterval(keepAliveInterval);
+                connectionOptions.setConnectionTimeout(0); //wait until connection successful or fail
+                this.mqttClient.connect(connectionOptions);
+                success = true;
+            } catch (MqttException me) {
+                logger.error("resason "+ me.getReasonCode());
+                logger.error("message "+ me.getMessage());
+                logger.error("cause "+ me.getCause());
+                me.printStackTrace();
+                logger.info("Reconnection in 30 seconds");
+                try{
+                    Thread.sleep(30000);
+                }
+                catch(Exception e) {
+                    logger.error("Eccezzione nella thread sleep");
+                }
+            }
         }
     }
 
@@ -127,7 +149,6 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
      *
      * Since all the analysis needed can be made on text data we can serialize the byte into a corresponding string and
      * store it in the db.
-     * @param topic
      * @param mqttMessage
      * @throws Exception
      */
@@ -213,6 +234,7 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
         this.getBrokerInstance(); //uses Discovery client so it must be called after eureka setup
         this.snifferLocationService.update();
         this.config();
+        this.connect();
         this.mqttClient.subscribe(topic, this.qos);
     }
 }
