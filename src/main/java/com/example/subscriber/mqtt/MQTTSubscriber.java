@@ -135,6 +135,8 @@ public class MQTTSubscriber implements MqttCallback, DisposableBean, Initializin
     @Override
     public void connectionLost(Throwable throwable) {
         logger.warn("Connection with broker lost!");
+        logger.info("Reconnecting!");
+        connect();
     }
 
     /**
